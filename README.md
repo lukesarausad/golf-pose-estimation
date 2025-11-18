@@ -3,7 +3,7 @@
 Real-time golf swing analysis using RTMPose for 2D pose estimation.
 
 ## Project Overview
-This project implements RTMPose for golf swing analysis as part of [Your Course Name] final project at University of Washington.
+This project implements RTMPose for golf swing analysis as part of CSE 455 final project at University of Washington.
 
 ### Team Members
 - Luke Sarausad
