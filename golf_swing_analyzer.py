@@ -4,6 +4,8 @@ Golf Swing Analyzer
 Provides phase-specific biomechanics feedback and exports analysis data.
 """
 import pandas as pd
+import json
+from pathlib import Path
 from typing import List, Dict, Optional
 
 
@@ -28,6 +30,22 @@ class GolfSwingAnalyzer:
             "Downswing": [],
             "Follow-through": []
         }
+
+        # Load target metrics from JSON
+        self.target_metrics = self._load_target_metrics()
+
+    def _load_target_metrics(self) -> Dict:
+        """Load professional target metrics from JSON file."""
+        target_file = Path(__file__).parent / "target_metrics.json"
+        try:
+            with open(target_file, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"Warning: {target_file} not found. Using empty targets.")
+            return {}
+        except json.JSONDecodeError:
+            print(f"Warning: {target_file} is invalid JSON. Using empty targets.")
+            return {}
 
     def analyze_phase(self, phase: str, metrics: dict) -> List[str]:
         """
@@ -265,6 +283,58 @@ class GolfSwingAnalyzer:
         }
         self.frame_data.append(frame_entry)
 
+    def get_top_deviations(self, top_n: int = 3) -> List[Dict]:
+        """
+        Get the top N biggest deviations from target metrics across all phases.
+
+        Args:
+            top_n: Number of top deviations to return
+
+        Returns:
+            List of dicts with phase, metric, actual, target, deviation, and feedback
+        """
+        if not self.target_metrics:
+            return []
+
+        summary = self.get_phase_summary()
+        deviations = []
+
+        for phase, phase_data in summary.items():
+            targets = self.target_metrics.get(phase, {})
+            if not targets:
+                continue
+
+            for metric, stats in phase_data.items():
+                if metric not in targets:
+                    continue
+
+                actual = stats['mean']
+                target = targets[metric]
+                deviation = abs(actual - target)
+
+                # Generate human-readable feedback
+                metric_name = metric.replace('_', ' ').title()
+                if actual > target:
+                    direction = "too high"
+                else:
+                    direction = "too low"
+
+                feedback = f"{phase} {metric_name}: {deviation:.1f}° {direction}"
+
+                deviations.append({
+                    'phase': phase,
+                    'metric': metric,
+                    'actual': actual,
+                    'target': target,
+                    'deviation': deviation,
+                    'feedback': feedback
+                })
+
+        # Sort by deviation magnitude (biggest first)
+        deviations.sort(key=lambda x: x['deviation'], reverse=True)
+
+        return deviations[:top_n]
+
     def get_phase_summary(self) -> Dict[str, Dict[str, Dict[str, float]]]:
         """
         Get summary statistics for each metric by phase.
@@ -300,7 +370,7 @@ class GolfSwingAnalyzer:
 
     def export_swing_data(self, output_path: str = "swing_analysis.csv"):
         """
-        Export summary statistics per phase to CSV.
+        Export summary statistics per phase to CSV with deviation from targets.
 
         Args:
             output_path: Path for output CSV file
@@ -311,7 +381,7 @@ class GolfSwingAnalyzer:
             print("No data to export")
             return
 
-        # Build rows for CSV - one row per phase with avg metrics
+        # Build rows for CSV - one row per phase with avg metrics and deviations
         rows = []
         phase_order = ["Address", "Backswing", "Top", "Downswing", "Follow-through"]
 
@@ -321,6 +391,7 @@ class GolfSwingAnalyzer:
 
             phase_data = summary[phase]
             num_frames = len(self.phase_metrics.get(phase, []))
+            targets = self.target_metrics.get(phase, {})
 
             row = {
                 'phase': phase,
@@ -332,24 +403,46 @@ class GolfSwingAnalyzer:
                 'shoulder_rotation': round(phase_data.get('shoulder_rotation', {}).get('mean', 0), 1),
                 'hip_rotation': round(phase_data.get('hip_rotation', {}).get('mean', 0), 1)
             }
+
+            # Add deviation columns if targets exist
+            if targets:
+                for metric in ['right_arm_angle', 'left_arm_angle', 'right_knee_angle',
+                               'left_knee_angle', 'shoulder_rotation', 'hip_rotation']:
+                    actual = row.get(metric, 0)
+                    target = targets.get(metric, actual)
+                    deviation = actual - target
+                    row[f'{metric}_dev'] = round(deviation, 1)
+
             rows.append(row)
 
         df = pd.DataFrame(rows)
 
-        # Reorder columns
-        columns = [
+        # Reorder columns - metrics first, then deviations
+        base_columns = [
             'phase', 'frames',
             'right_arm_angle', 'left_arm_angle',
             'right_knee_angle', 'left_knee_angle',
             'shoulder_rotation', 'hip_rotation'
         ]
-        df = df[columns]
+
+        # Add deviation columns if they exist
+        if self.target_metrics:
+            dev_columns = [
+                'right_arm_angle_dev', 'left_arm_angle_dev',
+                'right_knee_angle_dev', 'left_knee_angle_dev',
+                'shoulder_rotation_dev', 'hip_rotation_dev'
+            ]
+            columns = base_columns + dev_columns
+        else:
+            columns = base_columns
+
+        df = df[[col for col in columns if col in df.columns]]
 
         df.to_csv(output_path, index=False)
         print(f"Exported summary for {len(rows)} phases to {output_path}")
 
     def print_summary(self):
-        """Print a summary of the swing analysis."""
+        """Print a summary of the swing analysis with target comparisons."""
         summary = self.get_phase_summary()
 
         print("\n" + "=" * 60)
@@ -364,8 +457,17 @@ class GolfSwingAnalyzer:
             print("-" * 40)
 
             phase_data = summary[phase]
+            targets = self.target_metrics.get(phase, {})
+
             for metric, stats in phase_data.items():
-                print(f"  {metric}: {stats['mean']:.1f} (min: {stats['min']:.1f}, max: {stats['max']:.1f})")
+                mean_val = stats['mean']
+                if targets and metric in targets:
+                    target_val = targets[metric]
+                    deviation = mean_val - target_val
+                    dev_str = f"(target: {target_val:.1f}, dev: {deviation:+.1f})"
+                    print(f"  {metric}: {mean_val:.1f} {dev_str}")
+                else:
+                    print(f"  {metric}: {mean_val:.1f} (min: {stats['min']:.1f}, max: {stats['max']:.1f})")
 
         print("\n" + "=" * 60)
 

@@ -161,47 +161,49 @@ class MediaPipeGolfAnalyzer:
                     # Detect current phase
                     current_phase = self.phase_detector.update(left_wrist, right_wrist, frame_idx)
 
-                    # Get phase-specific feedback
-                    feedback = self.swing_analyzer.analyze_phase(current_phase, metrics)
-
-                    # Store frame data for export
+                    # Store metrics for analysis (but don't show per-frame feedback)
+                    self.swing_analyzer.analyze_phase(current_phase, metrics)
                     self.swing_analyzer.add_frame_data(frame_idx, current_phase, metrics)
 
-                    # Draw phase label at top center
+                    # Draw phase label at top center with background
                     phase_text = f"Phase: {current_phase}"
                     text_size = cv2.getTextSize(phase_text, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)[0]
                     text_x = (width - text_size[0]) // 2
+                    # Draw semi-transparent background for phase label
+                    padding = 10
+                    cv2.rectangle(frame,
+                                 (text_x - padding, 10),
+                                 (text_x + text_size[0] + padding, 50),
+                                 (0, 0, 0), -1)
                     cv2.putText(frame, phase_text, (text_x, 40),
                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2)
 
-                    # Draw metrics on left side
+                    # Draw metrics on left side with background
                     y_pos = 80
+                    # Calculate background rectangle dimensions
+                    max_text_width = 0
+                    metric_texts = []
                     for key, value in metrics.items():
                         if value is not None:
                             text = f"{key.replace('_', ' ').title()}: {value:.1f}"
+                            metric_texts.append(text)
+                            text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+                            max_text_width = max(max_text_width, text_size[0])
+
+                    # Draw background rectangle for all metrics
+                    if metric_texts:
+                        padding = 5
+                        bg_height = len(metric_texts) * 20 + padding
+                        cv2.rectangle(frame,
+                                     (5, y_pos - 15),
+                                     (15 + max_text_width + padding, y_pos - 15 + bg_height),
+                                     (0, 0, 0), -1)
+
+                        # Draw metrics text
+                        for text in metric_texts:
                             cv2.putText(frame, text, (10, y_pos),
                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                             y_pos += 20
-
-                    # Draw feedback on right side
-                    feedback_x = width - 350
-                    feedback_y = 80
-                    cv2.putText(frame, "Feedback:", (feedback_x, feedback_y),
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-                    feedback_y += 25
-
-                    for fb in feedback[:3]:  # Limit to top 3 most important tips
-                        # Color code: green for positive, orange for warnings
-                        if fb.startswith("Good") or fb.startswith("Great") or fb.startswith("Excellent") or fb.startswith("Full"):
-                            color = (0, 255, 0)  # Green
-                            fb_text = f"+ {fb}"
-                        else:
-                            color = (0, 165, 255)  # Orange
-                            fb_text = f"! {fb}"
-
-                        cv2.putText(frame, fb_text, (feedback_x, feedback_y),
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
-                        feedback_y += 18
 
             # Write frame
             out.write(frame)
@@ -222,6 +224,15 @@ class MediaPipeGolfAnalyzer:
 
         # Print summary
         self.swing_analyzer.print_summary()
+
+        # Print top 3 deviations
+        print("\n" + "=" * 60)
+        print("TOP 3 AREAS FOR IMPROVEMENT")
+        print("=" * 60)
+        top_deviations = self.swing_analyzer.get_top_deviations(3)
+        for i, dev in enumerate(top_deviations, 1):
+            print(f"{i}. {dev['feedback']}")
+        print("=" * 60)
 
         print(f"\nProcessing complete!")
         print(f"  Video saved to: {output_path}")

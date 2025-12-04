@@ -1,0 +1,42 @@
+{
+  "Address": {
+    "right_arm_angle": 154.56,
+    "left_arm_angle": 161.36,
+    "right_knee_angle": 134.04,
+    "left_knee_angle": 143.26,
+    "shoulder_rotation": 17.3,
+    "hip_rotation": 7.06
+  },
+  "Backswing": {
+    "right_arm_angle": 87.42,
+    "left_arm_angle": 152.06,
+    "right_knee_angle": 146.42,
+    "left_knee_angle": 123.16,
+    "shoulder_rotation": 21.48,
+    "hip_rotation": 7.88
+  },
+  "Top": {
+    "right_arm_angle": 82.32,
+    "left_arm_angle": 136.8,
+    "right_knee_angle": 145.38,
+    "left_knee_angle": 121,
+    "shoulder_rotation": 16.12,
+    "hip_rotation": 6.34
+  },
+  "Downswing": {
+    "right_arm_angle": 94.08,
+    "left_arm_angle": 129.82,
+    "right_knee_angle": 129.1,
+    "left_knee_angle": 131.8,
+    "shoulder_rotation": 15.2,
+    "hip_rotation": 4.66
+  },
+  "Follow-through": {
+    "right_arm_angle": 117.6,
+    "left_arm_angle": 69.38,
+    "right_knee_angle": 153.52,
+    "left_knee_angle": 168.48,
+    "shoulder_rotation": 17.6,
+    "hip_rotation": 4.5
+  }
+}

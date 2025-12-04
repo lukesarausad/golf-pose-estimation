@@ -23,6 +23,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+venv_golf/
 ENV/
 env/
 .venv
@@ -36,11 +37,7 @@ env/
 .DS_Store
 
 # Data directories (large files)
-data/coco/
-data/golf/
-*.jpg
-*.png
-*.jpeg
+data/
 
 # Video files in input/output directories
 input/*.mp4
@@ -51,21 +48,8 @@ outputs/*.avi
 outputs/*.mov
 golftrain-luke.mp4
 
-# Model checkpoints and outputs
-checkpoints/
-*.pth
-*.pt
-*.ckpt
-
-# Logs and outputs
-logs/
-visualizations/
-*.log
-runs/
-tensorboard/
-
-# Archive directory (old unused files)
-archive/
+# CSV outputs
+outputs/*.csv
 
 # Temporary files
 *.tmp
